@@ -4,8 +4,7 @@ import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.siddhi.SiddhiCEP;
 import org.apache.flink.streaming.siddhi.example.event.TemperatureEvent;
-
-import java.util.Map;
+import org.apache.flink.types.Row;
 
 /**
  *
@@ -27,7 +26,7 @@ public class PatternMatchExample {
                 TemperatureEvent.of(room2No, 25, 6000),
                 TemperatureEvent.of(room1No, 45, 7000)
         );
-        DataStream<Map<String, Object>> output = SiddhiCEP
+        DataStream<Row> output = SiddhiCEP
                 .define("inputStream", inputStream.keyBy("roomNo"),
                         "roomNo", "temp", "timestamp")
                 .cql("from every s1 = inputStream "
@@ -40,7 +39,7 @@ public class PatternMatchExample {
                         "s2.temp as final_temp "
                     + "insert into outputStream"
                 )
-                .returnAsMap("outputStream");
+                .returnAsRow("outputStream");
 
         output.print();
         env.execute();
