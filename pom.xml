@@ -29,6 +29,7 @@ under the License.
     <modules>
         <module>core</module>
         <module>experimental</module>
+        <module>example</module>
     </modules>
 
     <packaging>pom</packaging>
