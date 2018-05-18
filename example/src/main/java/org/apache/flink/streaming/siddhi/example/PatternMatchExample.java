@@ -7,6 +7,10 @@ import org.apache.flink.streaming.siddhi.example.event.TemperatureEvent;
 
 import java.util.Map;
 
+/**
+ *
+ * @see https://wso2.github.io/siddhi/documentation/siddhi-4.0/#pattern
+ */
 public class PatternMatchExample {
 
     public static void main(String[] args) throws Exception {
