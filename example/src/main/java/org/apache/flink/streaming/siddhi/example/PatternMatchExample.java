@@ -14,31 +14,52 @@ public class PatternMatchExample {
 
     public static void main(String[] args) throws Exception {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        env.setParallelism(1);
 
-        int room1No = 6666;
-        int room2No = 7777;
+        String room1 = "room1";
+        String room2 = "room2";
         DataStream<TemperatureEvent> inputStream = env.fromElements(
-                TemperatureEvent.of(room1No, 25, 1000),
-                TemperatureEvent.of(room2No, 25, 2000),
-                TemperatureEvent.of(room1No, 25, 3000),
-                TemperatureEvent.of(room2No, 25, 4000),
-                TemperatureEvent.of(room1No, 35, 5000),
-                TemperatureEvent.of(room2No, 25, 6000),
-                TemperatureEvent.of(room1No, 45, 7000)
+                TemperatureEvent.of(2, room1, 35),
+                TemperatureEvent.of(4, room1, 41),
+                TemperatureEvent.of(6, room1, 42),
+                TemperatureEvent.of(8, room1, 47),
+                TemperatureEvent.of(10, room1, 45),
+
+                TemperatureEvent.of(20, room2, 35),
+                TemperatureEvent.of(40, room2, 35),
+                TemperatureEvent.of(60,room2, 50),
+                TemperatureEvent.of(80,room2, 52)
         );
+
+        String sequence =
+                  "from every s1 = inputStream[not (temp is null)], "
+                + "not inputStream[ temp < s1.temp ] and inputStream[ temp > 40 ], "
+                + "s2 = inputStream[ roomNo == s1.roomNo and temp > s1.temp ]+, "
+                + "s3 = inputStream[ roomNo == s1.roomNo and temp < s2[last].temp ] "
+                + "within 1 min "
+                + "select s1.roomNo as room_no, s2[last].temp as peek_temp "
+                + "group by s1.roomNo "
+                + "having not(peek_temp is null) and peek_temp > 40 "
+                + "output every 1 events "
+                + "insert into outputStream";
+
+        String pattern =
+                  "from every (s1 = inputStream[not (temp is null) and instanceOfInteger(temp)]<1>) -> "
+                + "not inputStream[ temp < (s1.temp + 5) ] "
+                    + "and s3 = inputStream[ temp < (s1.temp + 10) ] "
+                + "within 1 year "
+                + "select s1.roomNo as room_no, count(s1.temp) as cnt, " +
+                    "avg(s1[last].temp) as avg_init_temp, avg(s3.temp) as avg_final_temp "
+                + "group by s1.roomNo "
+                + "having not(s3.id is null) and instanceOfDouble(avg_final_temp) and avg_final_temp > 40 "
+                + "output every 1 events "
+                // + "output every 1 millisecond "
+                + "insert into outputStream";
+
         DataStream<Row> output = SiddhiCEP
                 .define("inputStream", inputStream.keyBy("roomNo"),
-                        "roomNo", "temp", "timestamp")
-                .cql("from every s1 = inputStream "
-                    + "-> s2 = inputStream[ roomNo == s1.roomNo and temp > (s1.temp + 5) ] "
-                    + "within 1 min "
-                    + "select s1.roomNo as roomNo, " +
-                        "s1.timestamp as init_ts, " +
-                        "s1.temp as init_temp, " +
-                        "s2.timestamp as final_ts, " +
-                        "s2.temp as final_temp "
-                    + "insert into outputStream"
-                )
+                        "id", "roomNo", "temp", "datetime")
+                .cql(sequence)
                 .returnAsRow("outputStream");
 
         output.print();
